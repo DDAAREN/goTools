@@ -1,28 +1,53 @@
 package goTools
 
 import (
-    "log"
+    "crypto/tls"
+    "fmt"
+    "net"
+    "net/mail"
     "net/smtp"
+    "log"
 )
 
-func SendMail(subject string, body string) {
-    from := "18301109200@163.com"
-    pass := "163mailbot"
-    to := "liulei@btime.com"
-    
-    msg := "From: " + from + "\n" +
-            "To: " + to + " \n" +
-            "Subject: " + subject +"\n\n" +
-            body
+const (
+    servername = "smtp.xxx.com:25"
+    username = "xxx@xxx.com"
+    password = "xxxxx"
+)
 
-    auth := smtp.PlainAuth("",from,pass,"smtp.163.com")
+func dial(addr string) (*tls.Conn, error) {
+    return tls.Dial("tcp", addr, nil)
+}
 
-    err := smtp.SendMail(
-        "smtp.163.com:25",
+func composeMsg(from string, to string, subject string, body string) (message string) {
+    headers := make(map[string]string)
+    headers["From"] = from
+    headers["To"] = to
+    headers["Subject"] = subject
+
+    for k,v := range headers {
+        message += fmt.Sprintf("%s: %s\r\n", k, v)
+    }
+    message += "\r\n" + body
+
+    return 
+}
+
+func Send(toAddr string, subject string, body string) (err error) {
+    host,_,_ := net.SplitHostPort(servername)
+    auth := smtp.PlainAuth("",username, password, host)
+
+    from := mail.Address{"",username}
+    to := mail.Address{"",toAddr}
+
+    message := composeMsg(from.String(), to.String(), subject, body)
+
+    err = smtp.SendMail(
+        servername,
         auth,
-        from,
-        []string{to},
-        []byte(msg),
+        username,
+        []string{toAddr},
+        []byte(message),
     )
 
     if err != nil {
@@ -31,28 +56,68 @@ func SendMail(subject string, body string) {
     }
 
     log.Print("Sent.")
+    return nil
 }
 
-func SendMail_raw(subject string, body []byte) {
-    from := "18301109200@163.com"
-    pass := "163mailbot"
-    to := "liulei@btime.com"
-    
-    auth := smtp.PlainAuth("",from,pass,"smtp.163.com")
-
-    err := smtp.SendMail(
-        "smtp.163.com:25",
-        auth,
-        from,
-        []string{to},
-        body,
-    )
-
+func Send_SSL(toAddr string, subject string, body string) (err error) {
+    host,_,_ := net.SplitHostPort(servername)
+    conn, err := dial(servername)
     if err != nil {
-        log.Printf("smtp error: %s", err)
-        return
+        log.Println(err)
+        return err
     }
 
-    log.Print("Sent.")
-}
+    smtpClient, err := smtp.NewClient(conn, host)
+    if err != nil {
+        log.Println(err)
+        return err
+    }
 
+    auth := smtp.PlainAuth("",username, password, host)
+
+    err = smtpClient.Auth(auth)
+    if err != nil {
+        log.Println(err)
+        return err
+    }
+
+    from := mail.Address{"",username}
+    to := mail.Address{"",toAddr}
+    err = smtpClient.Mail(from.Address)
+    if err != nil {
+        log.Println(err)
+        return err
+    }
+
+    err = smtpClient.Rcpt(to.Address)
+    if err != nil {
+        log.Println(err)
+        return err
+    }
+
+    writer, err := smtpClient.Data()
+    if err != nil {
+        log.Println(err)
+        return err
+    }
+
+    message := composeMsg(from.String(), to.String(), subject, body)
+    
+
+    _, err = writer.Write([]byte(message))
+    if err != nil {
+        log.Println(err)
+        return err
+    }
+
+    err = writer.Close()
+    if err != nil {
+        log.Println(err)
+        return err
+    }
+
+    smtpClient.Quit()
+
+    fmt.Print("Send..")
+    return nil
+}
