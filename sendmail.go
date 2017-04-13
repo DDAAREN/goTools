@@ -33,7 +33,7 @@ func composeMsg(from string, to string, subject string, body string) (message st
     return 
 }
 
-func Send(toAddr string, subject string, body string) (err error) {
+func SendMail(toAddr string, subject string, body string) (err error) {
     host,_,_ := net.SplitHostPort(servername)
     auth := smtp.PlainAuth("",username, password, host)
 
@@ -59,7 +59,7 @@ func Send(toAddr string, subject string, body string) (err error) {
     return nil
 }
 
-func Send_SSL(toAddr string, subject string, body string) (err error) {
+func SendMail_SSL(toAddr string, subject string, body string) (err error) {
     host,_,_ := net.SplitHostPort(servername)
     conn, err := dial(servername)
     if err != nil {
