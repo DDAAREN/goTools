@@ -52,7 +52,7 @@ func SendMail(toAddr string, subject string, body string) (err error) {
 
     if err != nil {
         log.Printf("smtp error: %s", err)
-        return
+        return err
     }
 
     log.Print("Sent.")
