@@ -32,7 +32,7 @@ func (f Funcs) Bind(name string, fn interface{}) (err error) {
 
 func (f Funcs) Call(name string, params ...interface{}) (results []interface{}, err error) {
 	defer func() {
-		if err = recover(); err != nil {
+		if err := recover(); err != nil {
 			results = nil
 		}
 	}()
